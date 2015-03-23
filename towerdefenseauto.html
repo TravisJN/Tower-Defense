@@ -1,0 +1,448 @@
+<!doctype html>
+<html>
+  <head>
+	<meta charset="utf-8">
+	<title>Tower Defense</title>
+	<style>
+		#canvas {
+			margin: 10px;
+			background: #666666
+		}
+	</style>
+  </head>
+  <body>
+	<canvas id="canvas" width="500" height="500"></canvas>
+	<script src="utils.js"></script>
+	<script>
+
+	var canvas = document.getElementById("canvas");
+	var context = canvas.getContext("2d");
+	var mouse = utils.captureMouse(canvas);
+	
+	var turrets = [];
+	var bullets = [];
+	var enemies = [];
+	var enemySpawnDelayMs = 650;
+	var canSpawnEnemies = true;
+	var points = 0;
+	
+	
+	function Enemy(x, y) {
+		this.hp = 5;
+		this.x = x;
+		this.y = y;
+		this.color = "blue";
+		this.radius = 17;
+		this.velocity = 1.5;
+		this.eyeRadius = 5;
+	}
+
+	function Bullet(x, y, targetx, targety) {
+		this.x = x;
+		this.y = y;
+		this.damage = 1;
+		this.velocity = 7;
+		this.radius = 7;
+		this.color = "red";
+		this.targetx = targetx;
+		this.targety = targety;
+		this.angle = 0;
+	}
+
+	function Turret (x, y) {
+		this.x = x;
+		this.y = y;
+		this.angle = 0;
+		this.rotation = 0;
+		this.size = 40;
+		this.color = "#666666";
+		this.isFiring = true;
+		this.cooldown = 30;
+		this.count = 31;
+		this.cannonWidth = 15;
+		this.cannonHeight = 50;
+	}
+	
+	Turret.prototype.draw = function () {
+
+		
+		
+		context.save();
+		
+		context.beginPath();
+		context.arc(this.x, this.y, this.size, 0, 2*Math.PI, true);
+		context.fillStyle = this.color;
+		context.stroke();
+		context.fill();
+		
+		context.beginPath();
+		context.translate(this.x, this.y);
+		//this.rotation = this.rotation * .1;
+		context.rotate(this.rotation + Math.PI / 2);
+		context.fillStyle = this.color;
+		context.fillRect(-this.cannonWidth / 2, 0, this.cannonWidth, -this.cannonHeight);
+		context.strokeRect(-this.cannonWidth / 2, 0, this.cannonWidth, -this.cannonHeight);
+		context.restore();	
+		
+	}
+	
+	
+	
+	Enemy.prototype.draw = function () {
+		context.save();
+		context.beginPath();
+		context.arc(this.x, this.y, this.radius, 0, 2*Math.PI, true);
+		context.fillStyle = this.color;
+		context.stroke();
+		context.fill();
+		
+		context.restore();
+		
+		context.save();
+		context.beginPath();
+		
+		//draw faces
+		switch (this.hp) {
+			
+			case 5:
+				context.save();
+				context.strokeStyle = "blue";
+				context.fillStyle = "white";
+				context.beginPath();
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius, 0, 2*Math.PI, true);
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.strokeStyle = "blue";
+				context.fillStyle = "black";
+				context.beginPath();
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.strokeStyle = "black";
+				context.moveTo(this.x - 8, this.y + (this.radius / 2));
+				context.lineTo(this.x + 8, this.y + (this.radius / 2));
+				context.stroke();
+				context.restore();
+				break;
+			case 4:
+				context.save();
+				context.strokeStyle = "blue";
+				context.fillStyle = "white";
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius, 0, 2*Math.PI, true);
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.strokeStyle = "blue";
+				context.fillStyle = "black";
+				context.beginPath();
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.fillStyle = "red";
+				context.arc(this.x, this.y + (this.radius / 2), this.eyeRadius + 1, 0, Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.restore();
+				break;
+			case 3:
+				context.save();
+				context.beginPath();
+				context.strokeStyle = "blue";
+				context.fillStyle = "white";
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.strokeStyle = "blue";
+				context.fillStyle = "black";
+				context.beginPath();
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.fillStyle = "red";
+				context.arc(this.x, this.y + (this.radius / 2), this.eyeRadius + 1, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.restore();
+				break;
+			case 2:
+				context.save();
+				context.beginPath();
+				context.strokeStyle = "orange";
+				context.fillStyle = "orange";
+				context.arc(this.x, this.y, this.radius, 0, 2*Math.PI, true);
+				//context.arc(this.x - (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				//context.arc(this.x + (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				//context.arc(this.x, this.y + (this.radius / 2), this.eyeRadius + 1, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.strokeStyle = "blue";
+				context.fillStyle = "white";
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.strokeStyle = "blue";
+				context.fillStyle = "black";
+				context.beginPath();
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.fillStyle = "red";
+				context.arc(this.x, this.y + (this.radius / 2), this.eyeRadius + 1, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.restore();
+				
+				
+				break;
+			case 1:
+				context.save();
+				
+				context.strokeStyle = "red";
+				context.fillStyle = "red";
+				context.arc(this.x, this.y, this.radius, 0, 2*Math.PI, true);
+				//context.arc(this.x - (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				//context.arc(this.x + (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				//context.arc(this.x, this.y + (this.radius / 2), this.eyeRadius + 1, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.strokeStyle = "blue";
+				context.fillStyle = "white";
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 2), this.eyeRadius, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.strokeStyle = "blue";
+				context.fillStyle = "black";
+				context.beginPath();
+				context.arc(this.x - (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.arc(this.x + (this.radius / 2), this.y - (this.radius / 3), this.eyeRadius / 4, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.beginPath();
+				context.fillStyle = "red";
+				context.arc(this.x, this.y + (this.radius / 2), this.eyeRadius + 1, 0, 2*Math.PI, true);
+				context.stroke();
+				context.fill();
+				context.restore();
+				break;
+				
+				default: 
+					this.hp = 5;   //bug fix
+		}
+		
+		context.restore();
+		context.restore();
+	}
+
+	Bullet.prototype.draw = function () {
+		context.save();
+		context.beginPath();
+		context.arc(this.x, this.y, this.radius, 0, 2*Math.PI, true);
+		context.fillStyle = this.color;
+		context.stroke();
+		context.fill();
+		context.restore();
+	}
+
+	function drawBackground() {
+		context.save();
+		context.fillStyle = "#008000";
+		context.fillRect(0, 0, canvas.width, canvas.height);
+		
+		
+		context.fillStyle = "#7F5217";
+		context.fillRect(canvas.width / 4, 0, canvas.width / 2, canvas.height);
+		
+		context.fillStyle = "black";
+		context.font="23px arial";
+		context.fillText(" TOWER", 11, 23); 
+		context.fillText("DEFENSE", 11, 50);
+		
+		context.fillStyle = "black";
+		context.font="18px Consolas";
+		context.fillText("Points:" + points, 12, 100); 
+		context.restore();
+		
+	}
+
+	function findClosestEnemy(turret) {
+		var shortest = 9999;   
+		var closest = 0;
+		var dx, dy;
+		for (var i = 0; i < enemies.length; i++) {
+			dx = enemies[i].x - turret.x;
+			dy = enemies[i].y - turret.y;
+			if (Math.sqrt((dx * dx) + (dy * dy)) < shortest) {
+				shortest = Math.sqrt((dx * dx) + (dy * dy));
+				closest = i;
+			}
+		}
+		return closest;
+	}
+
+	function setBulletAngle(bullet) {
+		var dx = bullet.targetx - bullet.x;
+		var dy = bullet.targety - bullet.y;
+		bullet.angle = Math.atan2(dy, dx);
+		return bullet.angle;
+	}
+	
+	function setTurretAngle(closestEnemy, turret) {
+		var dx = closestEnemy.x - turret.x;
+		var dy = closestEnemy.y - turret.y;
+		turret.angle = Math.atan2(dy, dx);
+		return turret.angle;
+	}
+	
+	function checkCollision(bullet) {
+		var dx = 0;
+		var dy = 0;
+		var distance;
+		
+		for (var i = 0; i < enemies.length; i++) {
+			dx = bullet.x - enemies[i].x;
+			dy = bullet.y - enemies[i].y;
+			distance = Math.sqrt(dx * dx + dy * dy);    //find hypotenuse
+			if (distance < (bullet.radius + enemies[i].radius)) {  //Hit!
+				enemies[i].hp -= 1;
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	var turret1 = new Turret(65, 425);
+	turrets.push(turret1);
+	var turret2 = new Turret(65, 325);
+	turrets.push(turret2);
+	var turret3  = new Turret(435, 425);
+	turrets.push(turret3);
+	var turret4 = new Turret(435, 325);
+	turrets.push(turret4);
+
+	(function update() {
+		window.requestAnimationFrame(update, canvas);
+		drawBackground();
+
+		if (canSpawnEnemies) {
+			var enemy = new Enemy(utils.getRandomInt((canvas.width / 4) + 30, (canvas.width / 4) * 3) - 15, 0);
+			enemies.push(enemy);
+			
+			canSpawnEnemies = false;
+			window.setTimeout( function() { canSpawnEnemies = true; }, enemySpawnDelayMs);
+		}
+		
+		
+		//canvas.addEventListener('mousedown', function () {
+		
+		
+		
+			for (var i = 0; i < turrets.length; i++) {
+				var turret = turrets[i];
+				
+				var closest = findClosestEnemy(turret);
+				var closestEnemy = enemies[closest];	
+				
+				if (turret.isFiring && turret.count > turret.cooldown) {
+					turret.count = 0;
+					
+					var bullet = new Bullet(turret.x,turret.y, closestEnemy.x, closestEnemy.y);
+					
+					bullets.push(bullet);
+					turrets[i].rotation = setBulletAngle(bullet);    //set the angle of the bullet when it is first fired, trajectory will remain the same throughout bullet's life
+					
+					var bulletStart = bullet.radius + turrets[i].cannonHeight;
+
+					bullet.y = (turret.y + (Math.sin(bullet.angle) * bulletStart));
+					bullet.x = (turret.x + (Math.cos(bullet.angle) * bulletStart));
+				
+				} else {
+					//turrets[i].rotation = turrets[i].rotation / rotateCount;
+					++turret.count;
+					turrets[i].rotation = setTurretAngle(closestEnemy, turret);
+				}
+				
+				turrets[i].draw();
+				
+			}
+		//}, false);
+		/*
+		for (var i = 0; i < turrets.length; i++) {
+			turrets[i].draw();
+		}
+		*/
+		for (var i = 0; i < enemies.length; i++) {
+			if (enemies[i].hp === 0) {
+				enemies.splice(i, 1);
+			} else {
+				if (enemies[i].y > canvas.height) {
+					enemies[i].y = 0;
+					enemies[i].x = utils.getRandomInt((canvas.width / 4) + 30, (canvas.width / 4) * 3) - 15
+					enemies[i].velocity += 0.5;
+					points++;
+				} else {
+					enemies[i].y += enemies[i].velocity;
+				}
+				enemies[i].draw();
+			}
+		}
+
+		for (var i = 0; i < bullets.length; i++) {
+			var bullet = bullets[i];
+			
+			bullet.x += Math.cos(bullet.angle) * bullet.velocity;
+			bullet.y += Math.sin(bullet.angle) * bullet.velocity;
+							
+			if (bullet.x > canvas.width || bullet.x < 0 || bullet.y > canvas.height || bullet.y < 0) {  //remove bullet from arry if it reaches border of canvas
+				bullets.splice(i, 1);
+			} else if (checkCollision(bullet)) {
+				bullets.splice(i, 1);
+			} else {
+				bullet.draw();
+			}
+		}	
+		
+	}());
+
+	</script>
+  </body>
+</html>
